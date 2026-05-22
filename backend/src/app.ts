@@ -88,126 +88,95 @@ app.get("/embed.js", async (req, res) => {
       } catch(err) {}
     }
   }
-  if (!landingId) {
-    landingId = '${landingIdQuery || ""}';
-  }
+  if (!landingId) landingId = '${landingIdQuery || ""}';
   landingId = landingId.trim();
 
-  var rootId = currentScript
-    ? currentScript.getAttribute('data-root-id')
-    : 'lp-root-' + landingId;
+  var rootId = currentScript ? currentScript.getAttribute('data-root-id') : 'lp-root-' + landingId;
+  if (!landingId) { console.error('[LandingEmbed] No landing ID'); return; }
 
-  if (!landingId) { console.error('[LandingEmbed] No landing ID provided'); return; }
-
-  var apiBase = '${backendUrl}';
   var appBase = '${frontendUrl}';
 
   var root = document.getElementById(rootId);
-  if (!root) { console.error('[LandingEmbed] Root element not found: ' + rootId); return; }
+  if (!root) { console.error('[LandingEmbed] Root not found: ' + rootId); return; }
 
-  // Injectăm stilul pentru a sparge marginile temei Shopify și a ascunde titlul paginii implicite
-  var style = document.createElement('style');
-  style.innerHTML = ' \
-    .main-page-title, .page-title, h1.page-title, .section-header, .page-header, .shopify-section-main-page .title, .shopify-section-main-page h1, .rte h1, .page-width h1, #MainContent h1 { \
-      display: none !important; \
-    } \
-    #' + rootId + ' { \
-      width: 100vw !important; \
-      height: auto !important; \
-      min-height: 100vh !important; \
-      position: relative !important; \
-      left: 50% !important; \
-      right: 50% !important; \
-      margin-left: -50vw !important; \
-      margin-right: -50vw !important; \
-      padding: 0 !important; \
-      margin-top: 0 !important; \
-      margin-bottom: 0 !important; \
-      box-sizing: border-box !important; \
-    } \
-    html, body { \
-      overflow-x: hidden !important; \
-      overflow-y: visible !important; \
-    } \
-  ';
-  document.head.appendChild(style);
+  // ── Ascundem titlul implicit al paginii Shopify ──────────────────────────
+  var titleStyle = document.createElement('style');
+  titleStyle.innerHTML =
+    '.main-page-title, .page-title, h1.page-title, .section-header, .page-header,' +
+    '.shopify-section-main-page .title, .shopify-section-main-page h1,' +
+    '.rte h1, .page-width h1, #MainContent h1 { display: none !important; }' +
+    // Prevenim scroll orizontal pe pagina Shopify (dar permitem scroll vertical normal)
+    'html { overflow-x: hidden !important; }' +
+    'body { overflow-x: hidden !important; }';
+  document.head.appendChild(titleStyle);
 
-  // Ascundem titlurile implicite din Shopify în mod dinamic prin scanare DOM (pentru a fi 100% independenți de temă)
+  // Ascundere dinamică titluri (independent de temă)
   try {
-    var hideSelectors = [
-      'h1', 
-      '.main-page-title', 
-      '.page-title', 
-      '.title', 
-      '.section-header', 
-      '.page-header',
-      '.shopify-section-main-page h1',
-      '.rte h1'
-    ];
-
-    var isInsideHeaderOrFooter = function(el) {
-      if (typeof el.closest === 'function') {
-        return el.closest('header') || el.closest('footer') || el.closest('#shopify-section-header') || el.closest('#shopify-section-footer') || el.closest('.header') || el.closest('.footer');
-      }
-      var node = el;
-      while (node && node !== document.body) {
-        var tag = node.tagName ? node.tagName.toLowerCase() : '';
-        var id = node.id ? node.id.toLowerCase() : '';
-        var cls = node.className ? String(node.className).toLowerCase() : '';
-        if (tag === 'header' || tag === 'footer' || id.indexOf('header') !== -1 || id.indexOf('footer') !== -1 || cls.indexOf('header') !== -1 || cls.indexOf('footer') !== -1) {
-          return true;
-        }
-        node = node.parentNode;
+    var hideSelectors = ['h1','.main-page-title','.page-title','.title','.section-header','.page-header'];
+    var isHF = function(el) {
+      var n = el;
+      while (n && n !== document.body) {
+        var t = (n.tagName||'').toLowerCase(), id = (n.id||'').toLowerCase(), c = String(n.className||'').toLowerCase();
+        if (t==='header'||t==='footer'||id.indexOf('header')>-1||id.indexOf('footer')>-1||c.indexOf('header')>-1||c.indexOf('footer')>-1) return true;
+        n = n.parentNode;
       }
       return false;
     };
-
-    for (var i = 0; i < hideSelectors.length; i++) {
-      var elements = document.querySelectorAll(hideSelectors[i]);
-      for (var j = 0; j < elements.length; j++) {
-        var el = elements[j];
-        if (!root.contains(el)) {
-          if (!isInsideHeaderOrFooter(el)) {
-            el.style.setProperty('display', 'none', 'important');
-          }
-        }
+    for (var i=0; i<hideSelectors.length; i++) {
+      var els = document.querySelectorAll(hideSelectors[i]);
+      for (var j=0; j<els.length; j++) {
+        if (!root.contains(els[j]) && !isHF(els[j])) els[j].style.setProperty('display','none','important');
       }
     }
-  } catch (err) {
-    console.warn('[LandingEmbed] Error hiding page titles:', err);
+  } catch(e) {}
+
+  // ── Full-bleed fără 100vw (evităm problema scrollbar Windows) ───────────
+  // clientWidth exclude scrollbar-ul → nu provoacă overflow orizontal
+  function applyFullBleed() {
+    var vw = document.documentElement.clientWidth || document.body.clientWidth || window.innerWidth;
+    var rect = root.getBoundingClientRect();
+    var ml = -rect.left; // offset față de marginea stângă a viewport-ului
+    root.style.setProperty('width', vw + 'px', 'important');
+    root.style.setProperty('position', 'relative', 'important');
+    root.style.setProperty('left', '0', 'important');
+    root.style.setProperty('right', 'auto', 'important');
+    root.style.setProperty('margin-left', ml + 'px', 'important');
+    root.style.setProperty('margin-right', '0', 'important');
+    root.style.setProperty('margin-top', '0', 'important');
+    root.style.setProperty('margin-bottom', '0', 'important');
+    root.style.setProperty('padding', '0', 'important');
+    root.style.setProperty('box-sizing', 'border-box', 'important');
+    root.style.setProperty('max-width', 'none', 'important');
+    // Și iframe-ul să ocupe exact 100% din wrapper
+    if (iframe) iframe.style.setProperty('width', '100%', 'important');
   }
 
+  // ── Cream iframe-ul ──────────────────────────────────────────────────────
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
-  // IMPORTANT: overflow TREBUIE să fie visible — nu hidden!
-  // Dacă e hidden, iframe-ul blochează scroll-ul paginii Shopify.
-  // Scroll-ul aparține NUMAI paginii Shopify, nu iframe-ului intern.
-  iframe.style.cssText = 'width: 100% !important; border: none !important; min-height: 100vh !important; display: block !important; overflow: visible !important;';
+  iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;';
   iframe.title = 'Landing Page';
   iframe.setAttribute('loading', 'eager');
   iframe.setAttribute('scrolling', 'no');
-
   root.appendChild(iframe);
 
-  // Ascultăm mesajele postMessage de tip landing-height pentru a redimensionare cross-origin
+  // Aplicăm full-bleed după ce DOM-ul e gata
+  applyFullBleed();
+  // Re-aplicăm la resize (responsive)
+  window.addEventListener('resize', applyFullBleed);
+
+  // ── Ascultăm înălțimea trimisă din iframe prin postMessage ───────────────
   window.addEventListener('message', function(e) {
     var data = e.data;
-    if (typeof data === 'string') {
-      try {
-        data = JSON.parse(data);
-      } catch(err) {}
-    }
-    
+    if (typeof data === 'string') { try { data = JSON.parse(data); } catch(err) {} }
     if (data && data.type === 'landing-height') {
       var msgId = data.landingId ? String(data.landingId).trim().toLowerCase() : '';
       var localId = landingId ? String(landingId).trim().toLowerCase() : '';
-      
-      // Dacă IDs se potrivesc sau dacă localId nu e definit, redimensionăm iframe-ul
       if (!localId || msgId === localId) {
-        var newHeight = parseInt(data.height, 10);
-        if (newHeight > 0) {
-          iframe.style.setProperty('height', newHeight + 'px', 'important');
-          iframe.style.setProperty('min-height', newHeight + 'px', 'important');
+        var h = parseInt(data.height, 10);
+        if (h > 0) {
+          iframe.style.setProperty('height', h + 'px', 'important');
+          iframe.style.setProperty('min-height', h + 'px', 'important');
         }
       }
     }
