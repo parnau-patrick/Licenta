@@ -20,8 +20,8 @@ export class AuthController {
 
       res.cookie("token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: true, // Obligatoriu pe HTTPS (Railway folosește HTTPS)
+        sameSite: "none", // Permite transmiterea cookie-ului între Vercel și Railway
         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
@@ -32,7 +32,11 @@ export class AuthController {
   }
 
   static async logout(req: Request, res: Response) {
-    res.clearCookie("token");
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+    });
     res.status(200).json({ message: "Logged out successfully" });
   }
 
