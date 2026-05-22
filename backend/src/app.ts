@@ -93,27 +93,47 @@ app.get("/embed.js", async (req, res) => {
   var root = document.getElementById(rootId);
   if (!root) { console.error('[LandingEmbed] Root element not found: ' + rootId); return; }
 
+  // Injectăm stilul pentru a sparge marginile temei Shopify și a ascunde titlul paginii implicite
+  var style = document.createElement('style');
+  style.innerHTML = ' \
+    .main-page-title, .page-title, h1.page-title, .section-header, .page-header { \
+      display: none !important; \
+    } \
+    #' + rootId + ' { \
+      width: 100vw !important; \
+      position: relative !important; \
+      left: 50% !important; \
+      right: 50% !important; \
+      margin-left: -50vw !important; \
+      margin-right: -50vw !important; \
+      padding: 0 !important; \
+      margin-top: 0 !important; \
+      margin-bottom: 0 !important; \
+      box-sizing: border-box !important; \
+    } \
+    html, body { \
+      overflow-x: hidden !important; \
+    } \
+  ';
+  document.head.appendChild(style);
+
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
-  iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;';
+  iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;overflow:hidden;';
   iframe.title = 'Landing Page';
   iframe.setAttribute('loading', 'eager');
-  iframe.setAttribute('scrolling', 'yes');
-
-  iframe.onload = function() {
-    try {
-      var h = iframe.contentWindow.document.body.scrollHeight;
-      if (h > 0) iframe.style.height = h + 'px';
-    } catch(e) {}
-  };
+  iframe.setAttribute('scrolling', 'no');
 
   root.appendChild(iframe);
 
-  window.addEventListener('resize', function() {
-    try {
-      var h = iframe.contentWindow.document.body.scrollHeight;
-      if (h > 0) iframe.style.height = h + 'px';
-    } catch(e) {}
+  // Ascultăm mesajele postMessage de tip landing-height pentru a redimensiona înălțimea cross-origin
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'landing-height' && e.data.landingId === landingId) {
+      var newHeight = parseInt(e.data.height, 10);
+      if (newHeight > 0) {
+        iframe.style.height = newHeight + 'px';
+      }
+    }
   });
 })();
 `.trim();

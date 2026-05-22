@@ -30,6 +30,42 @@ export default function PublicLandingPage() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // Trimiterea înălțimii către Shopify parent window prin postMessage pentru a redimensiona iframe-ul
+  useEffect(() => {
+    if (loading || !data || !id) return;
+
+    const sendHeight = () => {
+      // Calculăm înălțimea totală a documentului din iframe
+      const height = document.body.scrollHeight || document.documentElement.scrollHeight;
+      window.parent.postMessage({
+        type: 'landing-height',
+        landingId: id,
+        height: height
+      }, '*');
+    };
+
+    // Trimitem înălțimea inițială
+    sendHeight();
+
+    // Utilizăm ResizeObserver pentru a asculta modificările de înălțime (ex: când se încarcă imagini sau componente)
+    const resizeObserver = new ResizeObserver(() => {
+      sendHeight();
+    });
+    resizeObserver.observe(document.body);
+
+    // Fallback-uri suplimentare după câteva milisecunde pentru a asigura randarea completă a imaginilor
+    const t1 = setTimeout(sendHeight, 500);
+    const t2 = setTimeout(sendHeight, 1500);
+    const t3 = setTimeout(sendHeight, 3000);
+
+    return () => {
+      resizeObserver.disconnect();
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [loading, data, id])
+
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
       if (e.data?.type === 'UPDATE_CFG') {
