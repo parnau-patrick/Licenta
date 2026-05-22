@@ -35,14 +35,18 @@ export default function PublicLandingPage() {
     if (loading || !data || !id) return;
 
     const sendHeight = () => {
+      const wrapper = document.getElementById('lp-iframe-wrapper');
       // Calculăm înălțimea totală a documentului din iframe într-un mod super robust
-      const height = Math.max(
-        document.body.scrollHeight || 0,
-        document.body.offsetHeight || 0,
-        document.documentElement.clientHeight || 0,
-        document.documentElement.scrollHeight || 0,
-        document.documentElement.offsetHeight || 0
-      );
+      const height = wrapper 
+        ? Math.max(wrapper.scrollHeight || 0, wrapper.offsetHeight || 0)
+        : Math.max(
+            document.body.scrollHeight || 0,
+            document.body.offsetHeight || 0,
+            document.documentElement.clientHeight || 0,
+            document.documentElement.scrollHeight || 0,
+            document.documentElement.offsetHeight || 0
+          );
+
       window.parent.postMessage({
         type: 'landing-height',
         landingId: id,
@@ -53,19 +57,28 @@ export default function PublicLandingPage() {
     // Trimitem înălțimea inițială
     sendHeight();
 
-    // Utilizăm ResizeObserver pentru a asculta modificările de înălțime (ex: când se încarcă imagini sau componente)
+    // Utilizăm ResizeObserver pentru a asculta modificările de înălțime
     const resizeObserver = new ResizeObserver(() => {
       sendHeight();
     });
     resizeObserver.observe(document.body);
+    
+    const wrapper = document.getElementById('lp-iframe-wrapper');
+    if (wrapper) {
+      resizeObserver.observe(wrapper);
+    }
 
-    // Fallback-uri suplimentare după câteva milisecunde pentru a asigura randarea completă a imaginilor
+    // Interval periodic pentru a asigura actualizarea înălțimii în mod absolut garantat
+    const interval = setInterval(sendHeight, 1000);
+
+    // Fallback-uri suplimentare
     const t1 = setTimeout(sendHeight, 500);
     const t2 = setTimeout(sendHeight, 1500);
     const t3 = setTimeout(sendHeight, 3000);
 
     return () => {
       resizeObserver.disconnect();
+      clearInterval(interval);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
@@ -133,9 +146,11 @@ export default function PublicLandingPage() {
   }
 
   return (
-    <CustomLandingPage
-      product={product}
-      landingId={data.id}
-    />
+    <div id="lp-iframe-wrapper" style={{ width: '100%', display: 'flow-root', overflow: 'hidden' }}>
+      <CustomLandingPage
+        product={product}
+        landingId={data.id}
+      />
+    </div>
   )
 }

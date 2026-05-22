@@ -113,6 +113,8 @@ app.get("/embed.js", async (req, res) => {
     } \
     #' + rootId + ' { \
       width: 100vw !important; \
+      height: auto !important; \
+      min-height: 100vh !important; \
       position: relative !important; \
       left: 50% !important; \
       right: 50% !important; \
@@ -141,18 +143,35 @@ app.get("/embed.js", async (req, res) => {
       '.shopify-section-main-page h1',
       '.rte h1'
     ];
-    hideSelectors.forEach(function(sel) {
-      var elements = document.querySelectorAll(sel);
-      elements.forEach(function(el) {
+
+    var isInsideHeaderOrFooter = function(el) {
+      if (typeof el.closest === 'function') {
+        return el.closest('header') || el.closest('footer') || el.closest('#shopify-section-header') || el.closest('#shopify-section-footer') || el.closest('.header') || el.closest('.footer');
+      }
+      var node = el;
+      while (node && node !== document.body) {
+        var tag = node.tagName ? node.tagName.toLowerCase() : '';
+        var id = node.id ? node.id.toLowerCase() : '';
+        var cls = node.className ? String(node.className).toLowerCase() : '';
+        if (tag === 'header' || tag === 'footer' || id.indexOf('header') !== -1 || id.indexOf('footer') !== -1 || cls.indexOf('header') !== -1 || cls.indexOf('footer') !== -1) {
+          return true;
+        }
+        node = node.parentNode;
+      }
+      return false;
+    };
+
+    for (var i = 0; i < hideSelectors.length; i++) {
+      var elements = document.querySelectorAll(hideSelectors[i]);
+      for (var j = 0; j < elements.length; j++) {
+        var el = elements[j];
         if (!root.contains(el)) {
-          // Evităm să ascundem elemente din header/footer
-          var isHeaderOrFooter = el.closest('header') || el.closest('footer') || el.closest('#shopify-section-header') || el.closest('#shopify-section-footer') || el.closest('.header') || el.closest('.footer');
-          if (!isHeaderOrFooter) {
+          if (!isInsideHeaderOrFooter(el)) {
             el.style.setProperty('display', 'none', 'important');
           }
         }
-      });
-    });
+      }
+    }
   } catch (err) {
     console.warn('[LandingEmbed] Error hiding page titles:', err);
   }
@@ -166,17 +185,25 @@ app.get("/embed.js", async (req, res) => {
 
   root.appendChild(iframe);
 
-  // Ascultăm mesajele postMessage de tip landing-height pentru a redimensiona înălțimea cross-origin
+  // Ascultăm mesajele postMessage de tip landing-height pentru a redimensionare cross-origin
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'landing-height') {
-      var msgId = e.data.landingId ? String(e.data.landingId).trim().toLowerCase() : '';
+    var data = e.data;
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+      } catch(err) {}
+    }
+    
+    if (data && data.type === 'landing-height') {
+      var msgId = data.landingId ? String(data.landingId).trim().toLowerCase() : '';
       var localId = landingId ? String(landingId).trim().toLowerCase() : '';
       
       // Dacă IDs se potrivesc sau dacă localId nu e definit, redimensionăm iframe-ul
       if (!localId || msgId === localId) {
-        var newHeight = parseInt(e.data.height, 10);
+        var newHeight = parseInt(data.height, 10);
         if (newHeight > 0) {
           iframe.style.height = newHeight + 'px';
+          iframe.style.minHeight = newHeight + 'px';
         }
       }
     }
