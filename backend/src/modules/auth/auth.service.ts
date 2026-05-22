@@ -239,9 +239,9 @@ export class AuthService {
 
     try {
       await sendVerificationEmail(user.email, verificationToken);
-    } catch (err) {
+    } catch (err: any) {
       console.error("[Auth] Eroare la trimiterea emailului de verificare:", err);
-      return { message: "Token-ul a fost generat, dar emailul nu a putut fi trimis. Încearcă din nou." };
+      return { message: `Eroare trimitere email: ${err.message || err}` };
     }
     return { message: "Email de verificare retrimis! Verifică inbox-ul." };
   }
