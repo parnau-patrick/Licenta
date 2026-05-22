@@ -124,11 +124,15 @@ checkoutRouter.post("/order", async (req: Request, res: Response) => {
   // Procesăm în background
   try {
     const shop = await getShopForLanding(parsed.data.landingId);
-    if (!shop?.accessToken) return;
+    if (!shop?.accessToken) {
+      console.error("[checkout/order] Nu s-a găsit shop-ul sau accessToken lipsă pentru landingId:", parsed.data.landingId);
+      return;
+    }
 
     const payload = buildShopifyDraftOrderPayload(parsed.data);
 
-    await fetch(`https://${shop.myshopifyDomain}/admin/api/2024-01/draft_orders.json`, {
+    console.log("[checkout/order] Se trimite payload-ul către Shopify pentru shop:", shop.myshopifyDomain);
+    const response = await fetch(`https://${shop.myshopifyDomain}/admin/api/2025-01/draft_orders.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": shop.accessToken,
@@ -136,6 +140,13 @@ checkoutRouter.post("/order", async (req: Request, res: Response) => {
       },
       body: JSON.stringify(payload),
     });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.error(`[checkout/order] Eșec la crearea Draft Order în Shopify (Status ${response.status}):`, responseText);
+    } else {
+      console.log("[checkout/order] Draft Order creat cu succes în Shopify:", responseText);
+    }
   } catch (err) {
     console.error("[checkout/order] Background error:", err);
   }
@@ -155,7 +166,10 @@ checkoutRouter.post("/track", async (req: Request, res: Response) => {
   // Procesăm în background — creare draft order parțial
   try {
     const shop = await getShopForLanding(parsed.data.landingId);
-    if (!shop?.accessToken) return;
+    if (!shop?.accessToken) {
+      console.error("[checkout/track] Nu s-a găsit shop-ul sau accessToken lipsă pentru landingId:", parsed.data.landingId);
+      return;
+    }
 
     const { items, customer, shipping = 20, total = 0 } = parsed.data;
 
@@ -178,10 +192,10 @@ checkoutRouter.post("/track", async (req: Request, res: Response) => {
         line_items: lineItems,
         customer: customer.phone
           ? {
-              first_name: customer.firstName || "Client",
-              last_name: customer.lastName || "-",
-              phone: customer.phone,
-            }
+            first_name: customer.firstName || "Client",
+            last_name: customer.lastName || "-",
+            phone: customer.phone,
+          }
           : undefined,
         note: "Abandon tracking — client a completat parțial formularul",
         tags: "landing-page,abandon,cod",
@@ -189,7 +203,8 @@ checkoutRouter.post("/track", async (req: Request, res: Response) => {
       },
     };
 
-    await fetch(`https://${shop.myshopifyDomain}/admin/api/2024-01/draft_orders.json`, {
+    console.log("[checkout/track] Se trimite payload-ul de track către Shopify pentru shop:", shop.myshopifyDomain);
+    const response = await fetch(`https://${shop.myshopifyDomain}/admin/api/2025-01/draft_orders.json`, {
       method: "POST",
       headers: {
         "X-Shopify-Access-Token": shop.accessToken,
@@ -197,6 +212,13 @@ checkoutRouter.post("/track", async (req: Request, res: Response) => {
       },
       body: JSON.stringify(payload),
     });
+
+    const responseText = await response.text();
+    if (!response.ok) {
+      console.error(`[checkout/track] Eșec la crearea Draft Order de abandon în Shopify (Status ${response.status}):`, responseText);
+    } else {
+      console.log("[checkout/track] Draft Order de abandon creat cu succes în Shopify:", responseText);
+    }
   } catch (err) {
     console.error("[checkout/track] Background error:", err);
   }
