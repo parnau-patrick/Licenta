@@ -30,7 +30,7 @@ const orderSchema = z.object({
   landingId: z.string().min(1),  // ID-ul landing page-ului (pentru a afla shop-ul)
   items: z.array(itemSchema).min(1),
   customer: customerSchema,
-  subtotal: z.number().nonnegative(),
+  subtotal: z.number().nonnegative().optional(), // Făcut opțional pentru compatibilitate
   shipping: z.number().nonnegative(),
   total: z.number().nonnegative(),
   shippingMethod: z.string().default("Transport RAPID"),
