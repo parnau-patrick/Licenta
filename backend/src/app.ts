@@ -91,96 +91,38 @@ app.get("/embed.js", async (req, res) => {
   if (!landingId) landingId = '${landingIdQuery || ""}';
   landingId = landingId.trim();
 
-  var rootId = currentScript ? currentScript.getAttribute('data-root-id') : 'lp-root-' + landingId;
   if (!landingId) { console.error('[LandingEmbed] No landing ID'); return; }
 
   var appBase = '${frontendUrl}';
 
-  var root = document.getElementById(rootId);
-  if (!root) { console.error('[LandingEmbed] Root not found: ' + rootId); return; }
-
-  // ── Ascundem titlul implicit al paginii Shopify ──────────────────────────
-  var titleStyle = document.createElement('style');
-  titleStyle.innerHTML =
-    '.main-page-title, .page-title, h1.page-title, .section-header, .page-header,' +
-    '.shopify-section-main-page .title, .shopify-section-main-page h1,' +
-    '.rte h1, .page-width h1, #MainContent h1 { display: none !important; }' +
-    // Prevenim scroll orizontal pe pagina Shopify (dar permitem scroll vertical normal)
-    'html { overflow-x: hidden !important; }' +
-    'body { overflow-x: hidden !important; }';
-  document.head.appendChild(titleStyle);
-
-  // Ascundere dinamică titluri (independent de temă)
-  try {
-    var hideSelectors = ['h1','.main-page-title','.page-title','.title','.section-header','.page-header'];
-    var isHF = function(el) {
-      var n = el;
-      while (n && n !== document.body) {
-        var t = (n.tagName||'').toLowerCase(), id = (n.id||'').toLowerCase(), c = String(n.className||'').toLowerCase();
-        if (t==='header'||t==='footer'||id.indexOf('header')>-1||id.indexOf('footer')>-1||c.indexOf('header')>-1||c.indexOf('footer')>-1) return true;
-        n = n.parentNode;
-      }
-      return false;
-    };
-    for (var i=0; i<hideSelectors.length; i++) {
-      var els = document.querySelectorAll(hideSelectors[i]);
-      for (var j=0; j<els.length; j++) {
-        if (!root.contains(els[j]) && !isHF(els[j])) els[j].style.setProperty('display','none','important');
-      }
-    }
-  } catch(e) {}
-
-  // ── Full-bleed fără 100vw (evităm problema scrollbar Windows) ───────────
-  // clientWidth exclude scrollbar-ul → nu provoacă overflow orizontal
-  function applyFullBleed() {
-    var vw = document.documentElement.clientWidth || document.body.clientWidth || window.innerWidth;
-    var rect = root.getBoundingClientRect();
-    var ml = -rect.left; // offset față de marginea stângă a viewport-ului
-    root.style.setProperty('width', vw + 'px', 'important');
-    root.style.setProperty('position', 'relative', 'important');
-    root.style.setProperty('left', '0', 'important');
-    root.style.setProperty('right', 'auto', 'important');
-    root.style.setProperty('margin-left', ml + 'px', 'important');
-    root.style.setProperty('margin-right', '0', 'important');
-    root.style.setProperty('margin-top', '0', 'important');
-    root.style.setProperty('margin-bottom', '0', 'important');
-    root.style.setProperty('padding', '0', 'important');
-    root.style.setProperty('box-sizing', 'border-box', 'important');
-    root.style.setProperty('max-width', 'none', 'important');
-    // Și iframe-ul să ocupe exact 100% din wrapper
-    if (iframe) iframe.style.setProperty('width', '100%', 'important');
-  }
-
-  // ── Cream iframe-ul ──────────────────────────────────────────────────────
+  // ── Opțiunea 3: iframe fullscreen fixed (acoperă header + footer) ─────────
+  // Iframe-ul ocupă TOT ecranul, scroll-ul se face ÎNĂUNTRUL iframe-ului.
+  // Header-ul și footer-ul Shopify sunt ascunse în spate (z-index mai mic).
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
-  iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;';
   iframe.title = 'Landing Page';
   iframe.setAttribute('loading', 'eager');
-  iframe.setAttribute('scrolling', 'no');
-  root.appendChild(iframe);
+  // position:fixed + 100vw/100vh = acoperă tot ecranul
+  // overflow:auto = scroll intern în iframe
+  // z-index:9999 = deasupra oricărui element Shopify
+  iframe.style.cssText = [
+    'position: fixed',
+    'top: 0',
+    'left: 0',
+    'width: 100vw',
+    'height: 100vh',
+    'border: none',
+    'z-index: 9999',
+    'background: white',
+    'overflow: auto',
+    'display: block'
+  ].join(' !important;') + ' !important;';
 
-  // Aplicăm full-bleed după ce DOM-ul e gata
-  applyFullBleed();
-  // Re-aplicăm la resize (responsive)
-  window.addEventListener('resize', applyFullBleed);
+  document.body.appendChild(iframe);
 
-  // ── Ascultăm înălțimea trimisă din iframe prin postMessage ───────────────
-  window.addEventListener('message', function(e) {
-    var data = e.data;
-    if (typeof data === 'string') { try { data = JSON.parse(data); } catch(err) {} }
-    if (data && data.type === 'landing-height') {
-      var msgId = data.landingId ? String(data.landingId).trim().toLowerCase() : '';
-      var localId = landingId ? String(landingId).trim().toLowerCase() : '';
-      if (!localId || msgId === localId) {
-        var h = parseInt(data.height, 10);
-        if (h > 0) {
-          iframe.style.setProperty('height', h + 'px', 'important');
-          iframe.style.setProperty('min-height', h + 'px', 'important');
-        }
-      }
-    }
-  });
+  // Blocăm scroll-ul paginii Shopify (body) — scroll-ul e doar în iframe
+  document.body.style.setProperty('overflow', 'hidden', 'important');
+  document.documentElement.style.setProperty('overflow', 'hidden', 'important');
 })();
 `.trim();
 

@@ -18,29 +18,30 @@ export default function PublicLandingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Stiluri pentru iframe: fără overflow intern, html/body se extind natural
-  // Shopify-ul de afară e cel care scrollează, nu iframe-ul intern
   useEffect(() => {
+    // Opțiunea 3: iframe fullscreen — scroll-ul se face ÎNĂUNTRUL iframe-ului
+    // html/body trebuie să permită scroll vertical normal
     const style = document.createElement('style');
     style.innerHTML = `
-      html {
-        overflow: visible !important;
+      html, body {
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
         height: auto !important;
-      }
-      body {
-        overflow: visible !important;
-        height: auto !important;
-        min-height: 0 !important;
       }
       #root {
-        min-height: 0 !important;
+        min-height: auto !important;
         height: auto !important;
-        overflow: visible !important;
       }
       ::-webkit-scrollbar {
-        display: none !important;
-        width: 0 !important;
-        height: 0 !important;
+        width: 6px !important;
+        height: 0px !important;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0,0,0,0.15) !important;
+        border-radius: 3px !important;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent !important;
       }
     `;
     document.head.appendChild(style);
