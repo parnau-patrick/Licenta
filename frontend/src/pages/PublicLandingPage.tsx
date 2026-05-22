@@ -35,8 +35,14 @@ export default function PublicLandingPage() {
     if (loading || !data || !id) return;
 
     const sendHeight = () => {
-      // Calculăm înălțimea totală a documentului din iframe
-      const height = document.body.scrollHeight || document.documentElement.scrollHeight;
+      // Calculăm înălțimea totală a documentului din iframe într-un mod super robust
+      const height = Math.max(
+        document.body.scrollHeight || 0,
+        document.body.offsetHeight || 0,
+        document.documentElement.clientHeight || 0,
+        document.documentElement.scrollHeight || 0,
+        document.documentElement.offsetHeight || 0
+      );
       window.parent.postMessage({
         type: 'landing-height',
         landingId: id,

@@ -35,17 +35,16 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Permite cereri fără origin (ex: Postman, server-to-server)
+
       if (!origin) return callback(null, true);
-      
+
       const cleanOrigin = origin.replace(/\/$/, "");
-      
-      // Permite localhost/127.0.0.1 și orice origin definit în allowedOrigins (fără slash final)
+
       if (allowedOrigins.includes(cleanOrigin)) return callback(null, true);
-      
+
       // Permite orice subdomeniu vercel.app (pentru producție și preview-uri)
       if (cleanOrigin.endsWith(".vercel.app")) return callback(null, true);
-      
+
       callback(new Error(`CORS: origin '${origin}' not allowed`));
     },
     credentials: true,
@@ -72,17 +71,30 @@ app.use("/api/notifications", notificationsRouter); // Notifications
 
 // ── embed.js — scriptul injectat in paginile Shopify ───
 app.get("/embed.js", async (req, res) => {
-  const landingId = req.query["data-landing-id"] as string | undefined;
+  const landingIdQuery = req.query["data-landing-id"] as string | undefined;
   const backendUrl = env.HOST || "http://localhost:4000";
   const frontendUrl = env.FRONTEND_ORIGIN || "http://localhost:5173";
 
   const script = `
 (function() {
-  var landingId = document.currentScript
-    ? document.currentScript.getAttribute('data-landing-id')
-    : '${landingId || ""}';
-  var rootId = document.currentScript
-    ? document.currentScript.getAttribute('data-root-id')
+  var currentScript = document.currentScript;
+  var landingId = '';
+  if (currentScript) {
+    landingId = currentScript.getAttribute('data-landing-id') || '';
+    if (!landingId && currentScript.src) {
+      try {
+        var urlParams = new URL(currentScript.src).searchParams;
+        landingId = urlParams.get('data-landing-id') || urlParams.get('landing-id') || '';
+      } catch(err) {}
+    }
+  }
+  if (!landingId) {
+    landingId = '${landingIdQuery || ""}';
+  }
+  landingId = landingId.trim();
+
+  var rootId = currentScript
+    ? currentScript.getAttribute('data-root-id')
     : 'lp-root-' + landingId;
 
   if (!landingId) { console.error('[LandingEmbed] No landing ID provided'); return; }
@@ -96,7 +108,7 @@ app.get("/embed.js", async (req, res) => {
   // Injectăm stilul pentru a sparge marginile temei Shopify și a ascunde titlul paginii implicite
   var style = document.createElement('style');
   style.innerHTML = ' \
-    .main-page-title, .page-title, h1.page-title, .section-header, .page-header { \
+    .main-page-title, .page-title, h1.page-title, .section-header, .page-header, .shopify-section-main-page .title, .shopify-section-main-page h1, .rte h1, .page-width h1, #MainContent h1 { \
       display: none !important; \
     } \
     #' + rootId + ' { \
@@ -117,6 +129,34 @@ app.get("/embed.js", async (req, res) => {
   ';
   document.head.appendChild(style);
 
+  // Ascundem titlurile implicite din Shopify în mod dinamic prin scanare DOM (pentru a fi 100% independenți de temă)
+  try {
+    var hideSelectors = [
+      'h1', 
+      '.main-page-title', 
+      '.page-title', 
+      '.title', 
+      '.section-header', 
+      '.page-header',
+      '.shopify-section-main-page h1',
+      '.rte h1'
+    ];
+    hideSelectors.forEach(function(sel) {
+      var elements = document.querySelectorAll(sel);
+      elements.forEach(function(el) {
+        if (!root.contains(el)) {
+          // Evităm să ascundem elemente din header/footer
+          var isHeaderOrFooter = el.closest('header') || el.closest('footer') || el.closest('#shopify-section-header') || el.closest('#shopify-section-footer') || el.closest('.header') || el.closest('.footer');
+          if (!isHeaderOrFooter) {
+            el.style.setProperty('display', 'none', 'important');
+          }
+        }
+      });
+    });
+  } catch (err) {
+    console.warn('[LandingEmbed] Error hiding page titles:', err);
+  }
+
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
   iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;overflow:hidden;';
@@ -128,10 +168,16 @@ app.get("/embed.js", async (req, res) => {
 
   // Ascultăm mesajele postMessage de tip landing-height pentru a redimensiona înălțimea cross-origin
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'landing-height' && e.data.landingId === landingId) {
-      var newHeight = parseInt(e.data.height, 10);
-      if (newHeight > 0) {
-        iframe.style.height = newHeight + 'px';
+    if (e.data && e.data.type === 'landing-height') {
+      var msgId = e.data.landingId ? String(e.data.landingId).trim().toLowerCase() : '';
+      var localId = landingId ? String(landingId).trim().toLowerCase() : '';
+      
+      // Dacă IDs se potrivesc sau dacă localId nu e definit, redimensionăm iframe-ul
+      if (!localId || msgId === localId) {
+        var newHeight = parseInt(e.data.height, 10);
+        if (newHeight > 0) {
+          iframe.style.height = newHeight + 'px';
+        }
       }
     }
   });
