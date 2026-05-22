@@ -19,6 +19,30 @@ export default function PublicLandingPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Injectăm un stil pentru a ne asigura că html și body din iframe nu au scrollbar-uri proprii
+    const style = document.createElement('style');
+    style.innerHTML = `
+      html, body {
+        overflow: hidden !important;
+        height: auto !important;
+        min-height: 100% !important;
+      }
+      #root {
+        min-height: auto !important;
+      }
+      ::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!id) return
     fetch(`${API_BASE}/api/public/landing/${id}`)
       .then(r => {

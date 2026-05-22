@@ -178,7 +178,7 @@ app.get("/embed.js", async (req, res) => {
 
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
-  iframe.style.cssText = 'width:100%;border:none;min-height:100vh;display:block;overflow:hidden;';
+  iframe.style.cssText = 'width: 100% !important; border: none !important; min-height: 100vh !important; display: block !important; overflow: hidden !important;';
   iframe.title = 'Landing Page';
   iframe.setAttribute('loading', 'eager');
   iframe.setAttribute('scrolling', 'no');
@@ -202,8 +202,8 @@ app.get("/embed.js", async (req, res) => {
       if (!localId || msgId === localId) {
         var newHeight = parseInt(data.height, 10);
         if (newHeight > 0) {
-          iframe.style.height = newHeight + 'px';
-          iframe.style.minHeight = newHeight + 'px';
+          iframe.style.setProperty('height', newHeight + 'px', 'important');
+          iframe.style.setProperty('min-height', newHeight + 'px', 'important');
         }
       }
     }
