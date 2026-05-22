@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Plan {
+  FREE
+  STARTER
+  PRO
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  password              String
+  role                  Role      @default(USER)
+  plan                  Plan      @default(FREE)
+  planExpiresAt         DateTime?
+  emailVerified         Boolean   @default(false)
+  verificationToken     String?   @unique
+  verificationTokenExp  DateTime?
+  resetToken            String?   @unique
+  resetTokenExp         DateTime?
+  stripeCustomerId      String?   @unique
+  stripeSubscriptionId  String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  shops                 Shop[]
+  notifications         Notification[]
+}
+
+model Shop {
+  id              String        @id @default(uuid())
+  myshopifyDomain String        @unique
+  accessToken     String?
+  scope           String?
+  isActive        Boolean       @default(true)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  landingPages    LandingPage[]
+  savedImages     SavedImage[]
+}
+
+model LandingPage {
+  id               String   @id @default(uuid())
+  shopId           String
+  shop             Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  shopifyProductId String
+  productTitle     String
+  handle           String
+  shopifyPageId    String?
+  config           Json     @default("{}")
+  isPublished      Boolean  @default(false)
+  publishedUrl     String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model SavedImage {
+  id         String   @id @default(uuid())
+  shopId     String
+  shop       Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  url        String
+  filename   String
+  label      String?
+  sourceType String   @default("generated")
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?  // Ex: '/price-intelligence?productId=123'
+  createdAt DateTime @default(now())
+}
