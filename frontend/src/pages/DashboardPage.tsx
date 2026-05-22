@@ -36,6 +36,8 @@ interface ShopifyOrder {
   }[];
 }
 
+const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 export default function DashboardPage() {
   const [orders, setOrders] = useState<ShopifyOrder[]>([]);
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
@@ -58,8 +60,8 @@ export default function DashboardPage() {
     async function loadDashboardData() {
       try {
         const [ordersRes, productsRes] = await Promise.all([
-          fetch("http://localhost:4000/api/shopify/orders", { credentials: "include" }),
-          fetch("http://localhost:4000/api/shopify/products", { credentials: "include" })
+          fetch(`${API}/api/shopify/orders`, { credentials: "include" }),
+          fetch(`${API}/api/shopify/products`, { credentials: "include" })
         ]);
 
         if (ordersRes.status === 404 || productsRes.status === 404) {

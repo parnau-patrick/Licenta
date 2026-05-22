@@ -20,6 +20,8 @@ interface ShopifyProduct {
   sales: number; 
 }
 
+const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
   const [shop, setShop] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function ProductsPage() {
   useEffect(() => {
     async function loadProducts() {
       try {
-        const res = await fetch("http://localhost:4000/api/shopify/products", {
+        const res = await fetch(`${API}/api/shopify/products`, {
           credentials: "include",
         });
 

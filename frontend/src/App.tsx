@@ -45,6 +45,8 @@ const navItems = [
   { to: "/drafts", label: "Drafts (Comenzi)", icon: <ShoppingCart size={20} /> },
 ];
 
+const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 function AppContent() {
   const { user, setUser, isLoading } = useAuth();
   const navigate = useNavigate();
@@ -52,7 +54,7 @@ function AppContent() {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:4000/api/auth/logout", {
+      await fetch(`${API}/api/auth/logout`, {
         method: "POST",
         credentials: "omit",
       });

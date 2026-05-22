@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 
+const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,7 +14,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const resReg = await fetch("http://localhost:4000/api/auth/register", {
+      const resReg = await fetch(`${API}/api/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -21,7 +23,7 @@ export default function RegisterPage() {
       if (!resReg.ok) throw new Error(dataReg.error || "Registration failed");
 
       // auto login right after
-      const resLog = await fetch("http://localhost:4000/api/auth/login", {
+      const resLog = await fetch(`${API}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

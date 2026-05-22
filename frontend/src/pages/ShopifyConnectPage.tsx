@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 export default function ShopifyConnectPage() {
   const [shop, setShop] = useState("");
   const [error, setError] = useState("");
@@ -16,7 +18,7 @@ export default function ShopifyConnectPage() {
   useEffect(() => {
     async function checkStatus() {
       try {
-        const res = await fetch("http://localhost:4000/api/shopify/status", {
+        const res = await fetch(`${API}/api/shopify/status`, {
           credentials: "include",
         });
         if (res.ok) {
@@ -43,7 +45,7 @@ export default function ShopifyConnectPage() {
     }
 
     setError("");
-    window.location.href = `http://localhost:4000/api/shopify/install?shop=${domain}`;
+    window.location.href = `${API}/api/shopify/install?shop=${domain}`;
   };
 
   return (
