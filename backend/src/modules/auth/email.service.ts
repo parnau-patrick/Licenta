@@ -1,15 +1,44 @@
-import nodemailer from "nodemailer";
 import { env } from "../../config/env.js";
 
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_PORT === 465,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-});
+// Funcție utilitară pentru a trimite email-uri prin API-ul HTTP de la Brevo
+async function sendViaBrevo(toEmail: string, subject: string, htmlContent: string) {
+  const apiKey = env.SMTP_PASS;
+  if (!apiKey || apiKey.trim() === "") {
+    throw new Error("Brevo API Key (SMTP_PASS) is not configured in environment variables.");
+  }
+
+  // Parsează emailul și numele expeditorului (ex: "AI Studio <noreply@aistudio.ro>")
+  const fromMatch = env.SMTP_FROM.match(/^(?:"?([^"<]+)"?\s)?(?:<([^>]+)>|(\S+@\S+))$/);
+  const senderEmail = fromMatch ? (fromMatch[2] || fromMatch[3]) : env.SMTP_FROM;
+  const senderName = fromMatch ? (fromMatch[1]?.trim() || "AI Studio") : "AI Studio";
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: {
+        name: senderName,
+        email: senderEmail,
+      },
+      to: [
+        {
+          email: toEmail,
+        },
+      ],
+      subject: subject,
+      htmlContent: htmlContent,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Brevo API Error: ${response.status} - ${errorText}`);
+  }
+}
 
 const baseStyle = `
   font-family: 'Segoe UI', Arial, sans-serif;
@@ -43,7 +72,6 @@ function makeButton(url: string, text: string): string {
     </table>
   `;
 }
-
 
 function wrapHtml(title: string, body: string): string {
   return `
@@ -83,12 +111,7 @@ export async function sendVerificationEmail(email: string, token: string) {
     </p>
   `);
 
-  await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to: email,
-    subject: "✅ Confirmă-ți contul AI Studio",
-    html,
-  });
+  await sendViaBrevo(email, "✅ Confirmă-ți contul AI Studio", html);
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
@@ -106,35 +129,28 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     </p>
   `);
 
-  await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to: email,
-    subject: "🔑 Resetare parolă AI Studio",
-    html,
-  });
+  await sendViaBrevo(email, "🔑 Resetare parolă AI Studio", html);
 }
 
 export async function sendSupportEmail(userEmail: string, message: string) {
   // Trimite mesajul de suport către ADMIN
-  await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to: env.SMTP_USER,
-    subject: `📩 Mesaj suport de la ${userEmail}`,
-    html: wrapHtml("Mesaj suport", `
+  await sendViaBrevo(
+    env.SMTP_USER,
+    `📩 Mesaj suport de la ${userEmail}`,
+    wrapHtml("Mesaj suport", `
       <h2 style="font-size:18px; font-weight:700; margin:0 0 8px;">Mesaj nou de suport</h2>
       <p style="color:#64748b;"><strong>De la:</strong> ${userEmail}</p>
       <div style="background:#f8fafc; border-radius:12px; padding:20px; margin:16px 0; color:#334155; line-height:1.7;">
         ${message.replace(/\n/g, "<br>")}
       </div>
-    `),
-  });
+    `)
+  );
 
   // Confirmăm userului că am primit mesajul
-  await transporter.sendMail({
-    from: env.SMTP_FROM,
-    to: userEmail,
-    subject: "📩 Am primit mesajul tău — AI Studio",
-    html: wrapHtml("Confirmare suport", `
+  await sendViaBrevo(
+    userEmail,
+    "📩 Am primit mesajul tău — AI Studio",
+    wrapHtml("Confirmare suport", `
       <h2 style="font-size:20px; font-weight:700; margin:0 0 8px;">Am primit mesajul tău! 📬</h2>
       <p style="color:#64748b; line-height:1.6;">
         Îți mulțumim pentru că ne-ai contactat. Echipa noastră va analiza mesajul și îți va răspunde în cel mai scurt timp posibil.
@@ -143,6 +159,6 @@ export async function sendSupportEmail(userEmail: string, message: string) {
         <strong>Mesajul tău:</strong><br>
         ${message.replace(/\n/g, "<br>")}
       </div>
-    `),
-  });
+    `)
+  );
 }

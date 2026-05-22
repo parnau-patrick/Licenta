@@ -237,7 +237,12 @@ export class AuthService {
       data: { verificationToken, verificationTokenExp },
     });
 
-    await sendVerificationEmail(user.email, verificationToken);
+    try {
+      await sendVerificationEmail(user.email, verificationToken);
+    } catch (err) {
+      console.error("[Auth] Eroare la trimiterea emailului de verificare:", err);
+      return { message: "Token-ul a fost generat, dar emailul nu a putut fi trimis. Încearcă din nou." };
+    }
     return { message: "Email de verificare retrimis! Verifică inbox-ul." };
   }
 }
