@@ -127,6 +127,7 @@ app.get("/embed.js", async (req, res) => {
     } \
     html, body { \
       overflow-x: hidden !important; \
+      overflow-y: visible !important; \
     } \
   ';
   document.head.appendChild(style);
@@ -178,7 +179,10 @@ app.get("/embed.js", async (req, res) => {
 
   var iframe = document.createElement('iframe');
   iframe.src = appBase + '/landing-preview/' + landingId;
-  iframe.style.cssText = 'width: 100% !important; border: none !important; min-height: 100vh !important; display: block !important; overflow: hidden !important;';
+  // IMPORTANT: overflow TREBUIE să fie visible — nu hidden!
+  // Dacă e hidden, iframe-ul blochează scroll-ul paginii Shopify.
+  // Scroll-ul aparține NUMAI paginii Shopify, nu iframe-ului intern.
+  iframe.style.cssText = 'width: 100% !important; border: none !important; min-height: 100vh !important; display: block !important; overflow: visible !important;';
   iframe.title = 'Landing Page';
   iframe.setAttribute('loading', 'eager');
   iframe.setAttribute('scrolling', 'no');

@@ -18,17 +18,24 @@ export default function PublicLandingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Stiluri pentru iframe: fără overflow intern, html/body se extind natural
+  // Shopify-ul de afară e cel care scrollează, nu iframe-ul intern
   useEffect(() => {
-    // Injectăm un stil pentru a ne asigura că html și body din iframe nu au scrollbar-uri proprii
     const style = document.createElement('style');
     style.innerHTML = `
-      html, body {
-        overflow: hidden !important;
+      html {
+        overflow: visible !important;
         height: auto !important;
-        min-height: 100% !important;
+      }
+      body {
+        overflow: visible !important;
+        height: auto !important;
+        min-height: 0 !important;
       }
       #root {
-        min-height: auto !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow: visible !important;
       }
       ::-webkit-scrollbar {
         display: none !important;
@@ -38,7 +45,7 @@ export default function PublicLandingPage() {
     `;
     document.head.appendChild(style);
     return () => {
-      document.head.removeChild(style);
+      if (document.head.contains(style)) document.head.removeChild(style);
     };
   }, []);
 
@@ -54,58 +61,68 @@ export default function PublicLandingPage() {
       .finally(() => setLoading(false))
   }, [id])
 
-  // Trimiterea înălțimii către Shopify parent window prin postMessage pentru a redimensiona iframe-ul
+  // Trimiterea înălțimii reale către Shopify parent window prin postMessage
   useEffect(() => {
     if (loading || !data || !id) return;
 
-    const sendHeight = () => {
+    const getHeight = () => {
+      // Măsurăm wrapper-ul direct — el conține tot landing page-ul randat
       const wrapper = document.getElementById('lp-iframe-wrapper');
-      // Calculăm înălțimea totală a documentului din iframe într-un mod super robust
-      const height = wrapper 
-        ? Math.max(wrapper.scrollHeight || 0, wrapper.offsetHeight || 0)
-        : Math.max(
-            document.body.scrollHeight || 0,
-            document.body.offsetHeight || 0,
-            document.documentElement.clientHeight || 0,
-            document.documentElement.scrollHeight || 0,
-            document.documentElement.offsetHeight || 0
-          );
-
-      window.parent.postMessage({
-        type: 'landing-height',
-        landingId: id,
-        height: height
-      }, '*');
+      if (wrapper) {
+        const rect = wrapper.getBoundingClientRect();
+        // offsetHeight e cel mai fiabil pentru elementele care se extind natural
+        return Math.max(
+          wrapper.offsetHeight || 0,
+          wrapper.scrollHeight || 0,
+          rect.height || 0
+        );
+      }
+      // Fallback la document
+      return Math.max(
+        document.body.offsetHeight || 0,
+        document.body.scrollHeight || 0,
+        document.documentElement.offsetHeight || 0,
+        document.documentElement.scrollHeight || 0
+      );
     };
 
-    // Trimitem înălțimea inițială
+    const sendHeight = () => {
+      const height = getHeight();
+      if (height > 0) {
+        window.parent.postMessage({ type: 'landing-height', landingId: id, height }, '*');
+      }
+    };
+
+    // Prima trimitere
     sendHeight();
 
-    // Utilizăm ResizeObserver pentru a asculta modificările de înălțime
-    const resizeObserver = new ResizeObserver(() => {
-      sendHeight();
-    });
-    resizeObserver.observe(document.body);
-    
+    // ResizeObserver pe wrapper și body
+    const ro = new ResizeObserver(() => sendHeight());
+    ro.observe(document.body);
     const wrapper = document.getElementById('lp-iframe-wrapper');
-    if (wrapper) {
-      resizeObserver.observe(wrapper);
-    }
+    if (wrapper) ro.observe(wrapper);
 
-    // Interval periodic pentru a asigura actualizarea înălțimii în mod absolut garantat
-    const interval = setInterval(sendHeight, 1000);
+    // Interval de securitate: trimitem periodic timp de 10 secunde (pentru imagini care se încarcă lent)
+    let ticks = 0;
+    const interval = setInterval(() => {
+      sendHeight();
+      ticks++;
+      if (ticks >= 10) clearInterval(interval);
+    }, 1000);
 
-    // Fallback-uri suplimentare
-    const t1 = setTimeout(sendHeight, 500);
-    const t2 = setTimeout(sendHeight, 1500);
-    const t3 = setTimeout(sendHeight, 3000);
+    // Fallback-uri rapide la start
+    const t1 = setTimeout(sendHeight, 300);
+    const t2 = setTimeout(sendHeight, 800);
+    const t3 = setTimeout(sendHeight, 2000);
+    const t4 = setTimeout(sendHeight, 5000);
 
     return () => {
-      resizeObserver.disconnect();
+      ro.disconnect();
       clearInterval(interval);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, [loading, data, id])
 
@@ -135,10 +152,10 @@ export default function PublicLandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-500 text-sm">Se încarcă...</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          <div style={{ width: 40, height: 40, border: '4px solid #10b981', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ color: '#64748b', fontSize: 14 }}>Se încarcă...</p>
         </div>
       </div>
     )
@@ -146,13 +163,12 @@ export default function PublicLandingPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-red-500">{error || 'Eroare necunoscută.'}</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'white' }}>
+        <p style={{ color: '#ef4444' }}>{error || 'Eroare necunoscută.'}</p>
       </div>
     )
   }
 
-  // Construim obiectul product din config
   const cfg = data.config as any
   const product = {
     id: data.shopifyProductId,
@@ -170,7 +186,11 @@ export default function PublicLandingPage() {
   }
 
   return (
-    <div id="lp-iframe-wrapper" style={{ width: '100%', display: 'flow-root', overflow: 'hidden' }}>
+    // Wrapper fără overflow-hidden — se extinde natural la toată înălțimea conținutului
+    <div
+      id="lp-iframe-wrapper"
+      style={{ width: '100%', display: 'block', overflow: 'visible', height: 'auto' }}
+    >
       <CustomLandingPage
         product={product}
         landingId={data.id}
