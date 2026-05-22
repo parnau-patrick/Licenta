@@ -77,6 +77,7 @@ export default function CheckoutModal({ product, landingId, isOpen, onClose }: C
 
   const buildPayload = (currentForm = form) => ({
     landingId,
+    subtotal,
     items: [{
       productId: product.id,
       productName: product.name,
