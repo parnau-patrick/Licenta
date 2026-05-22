@@ -11,7 +11,8 @@ COPY tsconfig.json ./
 # Instalează toate dependențele (inclusiv devDependencies pentru build)
 RUN npm ci
 
-# Generează Prisma Client
+# Generează Prisma Client (DATABASE_URL dummy doar pentru build, nu pentru runtime)
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/db"
 RUN npx prisma generate
 
 # Copiază codul sursă și buildează TypeScript
