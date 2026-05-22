@@ -112,6 +112,14 @@ function buildShopifyDraftOrderPayload(data: z.infer<typeof orderSchema>) {
 
 // POST /api/checkout/order — Creare Draft Order Shopify (COD)
 checkoutRouter.post("/order", async (req: Request, res: Response) => {
+  if (req.body && req.body.customer && typeof req.body.customer === "object") {
+    for (const key of Object.keys(req.body.customer)) {
+      if (req.body.customer[key] === "") {
+        delete req.body.customer[key];
+      }
+    }
+  }
+
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Date invalide", details: parsed.error.flatten() });
@@ -154,9 +162,17 @@ checkoutRouter.post("/order", async (req: Request, res: Response) => {
 
 // POST /api/checkout/track — Tracking abandon (beacon)
 checkoutRouter.post("/track", async (req: Request, res: Response) => {
+  if (req.body && req.body.customer && typeof req.body.customer === "object") {
+    for (const key of Object.keys(req.body.customer)) {
+      if (req.body.customer[key] === "") {
+        delete req.body.customer[key];
+      }
+    }
+  }
+
   const parsed = trackSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Date invalide" });
+    res.status(400).json({ error: "Date invalide", details: parsed.error.flatten() });
     return;
   }
 
