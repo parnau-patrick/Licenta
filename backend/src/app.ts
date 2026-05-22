@@ -29,7 +29,7 @@ const allowedOrigins = [
   "http://127.0.0.1:3000",
   "http://localhost:4000",
   // Adaugă automat FRONTEND_ORIGIN din env (ex: https://my-app.vercel.app)
-  ...env.FRONTEND_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean),
+  ...env.FRONTEND_ORIGIN.split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean),
 ];
 
 app.use(
@@ -37,7 +37,15 @@ app.use(
     origin: (origin, callback) => {
       // Permite cereri fără origin (ex: Postman, server-to-server)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      
+      const cleanOrigin = origin.replace(/\/$/, "");
+      
+      // Permite localhost/127.0.0.1 și orice origin definit în allowedOrigins (fără slash final)
+      if (allowedOrigins.includes(cleanOrigin)) return callback(null, true);
+      
+      // Permite orice subdomeniu vercel.app (pentru producție și preview-uri)
+      if (cleanOrigin.endsWith(".vercel.app")) return callback(null, true);
+      
       callback(new Error(`CORS: origin '${origin}' not allowed`));
     },
     credentials: true,
