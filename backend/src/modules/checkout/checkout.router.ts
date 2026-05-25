@@ -52,17 +52,44 @@ async function getShopForLanding(landingId: string) {
   return landing?.shop ?? null;
 }
 
-function buildShopifyDraftOrderPayload(data: z.infer<typeof orderSchema>) {
+async function resolveVariantId(
+  productId: string,
+  shop: { myshopifyDomain: string; accessToken: string }
+): Promise<number | null> {
+  try {
+    const res = await fetch(
+      `https://${shop.myshopifyDomain}/admin/api/2025-01/products/${productId}.json?fields=variants`,
+      { headers: { "X-Shopify-Access-Token": shop.accessToken } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as any;
+    const variantId = data?.product?.variants?.[0]?.id;
+    return variantId ? Number(variantId) : null;
+  } catch {
+    return null;
+  }
+}
+
+function buildShopifyDraftOrderPayload(
+  data: z.infer<typeof orderSchema>,
+  resolvedVariantIds: (number | null)[]
+) {
   const { items, customer, shipping, shippingMethod } = data;
 
-  const lineItems = items.map((item) => {
-    const variantId = item.shopifyVariantId ?? item.productShopifyVariantId;
+  const lineItems = items.map((item, idx) => {
+    const variantId =
+      item.shopifyVariantId
+        ? Number(item.shopifyVariantId)
+        : item.productShopifyVariantId
+        ? Number(item.productShopifyVariantId)
+        : resolvedVariantIds[idx] ?? null;
+
     const baseEntry: Record<string, unknown> = {
       quantity: item.qty,
       price: (item.price / item.qty).toFixed(2),
     };
     if (variantId) {
-      baseEntry.variant_id = Number(variantId);
+      baseEntry.variant_id = variantId;
     } else {
       baseEntry.title = item.productName;
     }
@@ -137,7 +164,16 @@ checkoutRouter.post("/order", async (req: Request, res: Response) => {
       return;
     }
 
-    const payload = buildShopifyDraftOrderPayload(parsed.data);
+    // Rezolvăm automat variant_id din product_id când nu e setat manual
+    const resolvedVariantIds = await Promise.all(
+      parsed.data.items.map(async (item) => {
+        if (item.shopifyVariantId || item.productShopifyVariantId) return null;
+        if (!item.productId) return null;
+        return resolveVariantId(String(item.productId), shop as any);
+      })
+    );
+
+    const payload = buildShopifyDraftOrderPayload(parsed.data, resolvedVariantIds);
 
     console.log("[checkout/order] Se trimite payload-ul către Shopify pentru shop:", shop.myshopifyDomain);
     const response = await fetch(`https://${shop.myshopifyDomain}/admin/api/2025-01/draft_orders.json`, {
@@ -189,14 +225,28 @@ checkoutRouter.post("/track", async (req: Request, res: Response) => {
 
     const { items, customer, shipping = 20, total = 0 } = parsed.data;
 
-    const lineItems = items.map((item) => {
-      const variantId = item.shopifyVariantId ?? item.productShopifyVariantId;
+    // Rezolvăm automat variant_id
+    const resolvedVariantIds = await Promise.all(
+      items.map(async (item) => {
+        if (item.shopifyVariantId || item.productShopifyVariantId) return null;
+        if (!item.productId) return null;
+        return resolveVariantId(String(item.productId), shop as any);
+      })
+    );
+
+    const lineItems = items.map((item, idx) => {
+      const variantId =
+        item.shopifyVariantId
+          ? Number(item.shopifyVariantId)
+          : item.productShopifyVariantId
+          ? Number(item.productShopifyVariantId)
+          : resolvedVariantIds[idx] ?? null;
       const baseEntry: Record<string, unknown> = {
         quantity: item.qty,
         price: (item.price / item.qty).toFixed(2),
       };
       if (variantId) {
-        baseEntry.variant_id = Number(variantId);
+        baseEntry.variant_id = variantId;
       } else {
         baseEntry.title = item.productName;
       }
