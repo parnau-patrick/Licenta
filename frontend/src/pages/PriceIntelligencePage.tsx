@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { LineChart, Search, Link as LinkIcon, DollarSign, Target, Gift, Box, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
+import { LineChart, Search, Link as LinkIcon, DollarSign, Target, Gift, Box, CheckCircle2, Sparkles } from "lucide-react";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
@@ -21,6 +22,9 @@ interface IntelligenceResult {
 }
 
 export default function PriceIntelligencePage() {
+  const [searchParams] = useSearchParams();
+  const notifProductId = searchParams.get("productId"); // vine din notificare
+
   const [url, setUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<IntelligenceResult | null>(null);
@@ -29,15 +33,42 @@ export default function PriceIntelligencePage() {
   const [products, setProducts] = useState<any[]>([]);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [mode, setMode] = useState<"url" | "shopify">("shopify");
+  const autoAnalyzed = useRef(false); // previne dubluri
 
   // Fetch products on mount
-
   useEffect(() => {
     fetch(`${API_BASE}/api/shopify/products`, { credentials: "include" })
       .then(r => r.json())
-      .then(data => setProducts(data.products || []))
+      .then(data => {
+        const prods = data.products || [];
+        setProducts(prods);
+
+        // Dacă am venit dintr-o notificare cu productId, selectăm produsul automat
+        if (notifProductId && !autoAnalyzed.current) {
+          const found = prods.find((p: any) => String(p.id) === String(notifProductId));
+          if (found) {
+            setSelectedProductId(String(found.id));
+            setMode("shopify");
+          }
+        }
+      })
       .catch(err => console.error("Error loading products:", err));
-  }, []);
+  }, [notifProductId]);
+
+  // Odată ce produsul e selectat din notificare, rulează analiza automat
+  useEffect(() => {
+    if (
+      notifProductId &&
+      selectedProductId === String(notifProductId) &&
+      products.length > 0 &&
+      !autoAnalyzed.current &&
+      !loading
+    ) {
+      autoAnalyzed.current = true;
+      analyzeUrl();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProductId, products]);
 
   const analyzeUrl = async () => {
     if (mode === "url" && !url) return;
@@ -86,7 +117,31 @@ export default function PriceIntelligencePage() {
 
   return (
     <section className="space-y-6 soft-enter md:space-y-8 pb-10 max-w-5xl mx-auto">
+
+      {/* Banner notificare — apare doar când venim dintr-o notificare */}
+      {notifProductId && (
+        <div className="flex items-center gap-4 bg-gradient-to-r from-indigo-500/10 to-fuchsia-500/10 border border-indigo-200 rounded-2xl px-5 py-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={18} className="text-indigo-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold text-indigo-800">Analiză pornită din notificare</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {loading
+                ? "Se generează strategia AI pentru produsul tău..."
+                : result
+                ? "Analiza a fost completată. Vezi rezultatele mai jos."
+                : "Produsul a fost selectat automat. Apasă „Generează Strategie" dacă analiza nu a pornit."}
+            </p>
+          </div>
+          {loading && (
+            <div className="flex-shrink-0 w-5 h-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+          )}
+        </div>
+      )}
+
       {/* Header */}
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 dark-glass rounded-[2rem] p-8 md:p-10 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 rounded-full bg-indigo-500/20 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-10 w-64 h-64 rounded-full bg-fuchsia-500/20 blur-3xl pointer-events-none" />
