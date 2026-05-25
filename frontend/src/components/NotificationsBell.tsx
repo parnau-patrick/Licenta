@@ -3,7 +3,6 @@ import { Bell, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
-const SIDEBAR_WIDTH = 256; // w-64 = 256px
 
 export default function NotificationsBell() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -20,14 +19,19 @@ export default function NotificationsBell() {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
 
-    // Lățime dropdown: 360px sau mai puțin dacă nu încape
-    const dropW = Math.min(360, vw - SIDEBAR_WIDTH - 16);
-    // Înălțime maximă disponibilă sub bell
-    const topBelow = rect.bottom + 8;
-    const availH = vh - topBelow - 8;
+    const dropW = Math.min(320, vw - 16);
 
-    // Poziție orizontală: imediat după sidebar
-    const left = SIDEBAR_WIDTH + 8;
+    // Încearcă să pornească de la marginea stângă a bell-ului
+    let left = rect.left;
+    // Dacă iese din dreapta viewport-ului, mută-l spre stânga
+    if (left + dropW > vw - 8) {
+      left = vw - dropW - 8;
+    }
+    // Nu lăsa să iasă din stânga
+    if (left < 8) left = 8;
+
+    const topBelow = rect.bottom + 6;
+    const availH = vh - topBelow - 8;
 
     setDropdownStyle({
       position: "fixed",
@@ -38,6 +42,7 @@ export default function NotificationsBell() {
       zIndex: 9999,
     });
   }, []);
+
 
   const toggleOpen = () => {
     if (!isOpen) calcDropdownPosition();
