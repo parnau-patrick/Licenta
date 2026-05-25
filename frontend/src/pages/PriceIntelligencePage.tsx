@@ -131,7 +131,7 @@ export default function PriceIntelligencePage() {
                 ? "Se generează strategia AI pentru produsul tău..."
                 : result
                 ? "Analiza a fost completată. Vezi rezultatele mai jos."
-                : "Produsul a fost selectat automat. Apasă „Generează Strategie" dacă analiza nu a pornit."}
+                : "Produsul a fost selectat automat. Apasă \"Generează Strategie\" dacă analiza nu a pornit."}
             </p>
           </div>
           {loading && (
