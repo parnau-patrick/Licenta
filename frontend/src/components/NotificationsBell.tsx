@@ -71,7 +71,10 @@ export default function NotificationsBell() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-12 left-0 md:left-auto md:right-0 w-80 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 z-50 overflow-hidden soft-enter">
+        <div
+          className="absolute top-12 right-0 bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 z-50 overflow-hidden soft-enter"
+          style={{ width: "min(320px, calc(100vw - 16px))" }}
+        >
           <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <h3 className="font-bold text-slate-800">Notificări</h3>
             {unreadCount > 0 && (
@@ -94,11 +97,11 @@ export default function NotificationsBell() {
                     className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${!n.isRead ? 'bg-indigo-50/30' : ''}`}
                     onClick={() => handleNotificationClick(n)}
                   >
-                    <div className="flex gap-3">
-                      <div className={`mt-0.5 flex-shrink-0 w-2 h-2 rounded-full ${!n.isRead ? 'bg-indigo-500' : 'bg-transparent'}`} />
-                      <div>
-                        <p className="text-sm font-bold text-slate-800">{n.title}</p>
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
+                    <div className="flex gap-3 items-start">
+                      <div className={`mt-1.5 flex-shrink-0 w-2 h-2 rounded-full ${!n.isRead ? 'bg-indigo-500' : 'bg-slate-300'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold text-slate-800 break-words">{n.title}</p>
+                        <p className="text-xs text-slate-500 mt-1 line-clamp-3 leading-relaxed break-words">{n.message}</p>
                         <p className="text-[10px] text-slate-400 mt-2 font-medium">
                           {new Date(n.createdAt).toLocaleDateString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
                         </p>
