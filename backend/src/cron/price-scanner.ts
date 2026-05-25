@@ -74,7 +74,7 @@ export async function runPriceIntelligenceScan() {
                 data: {
                   userId: shop.userId,
                   title: `Oportunitate Preț: ${prod.title}`,
-                  message: `AI-ul nostru sugerează un preț de ${aiResult.aiData.recommendedPrice} pentru a maximiza conversiile. ${aiResult.aiData.pricingStrategy.substring(0, 100)}...`,
+                  message: `AI-ul nostru sugerează un preț de ${aiResult.aiData.recommendedPrice} pentru a maximiza conversiile. ${aiResult.aiData.pricingStrategy}`,
                   link: `/price-intelligence?productId=${prod.id}`
                 }
               });
