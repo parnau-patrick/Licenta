@@ -28,7 +28,7 @@ const schema = z.object({
   // Shopify
   SHOPIFY_API_KEY: z.string(),
   SHOPIFY_API_SECRET: z.string(),
-  SHOPIFY_SCOPES: z.string().default("read_products,read_orders,write_orders,write_draft_orders,read_draft_orders,read_inventory,write_content,read_content"),
+  SHOPIFY_SCOPES: z.string().default("read_products,read_orders,write_orders,write_draft_orders,read_draft_orders,read_inventory,write_content,read_content,read_customers,write_customers"),
   HOST: z.string().default("http://localhost:4000"),
 
   // SMTP Email
