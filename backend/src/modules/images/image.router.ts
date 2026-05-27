@@ -4,6 +4,7 @@ import { AlibabaImportError, importAlibabaProduct } from "./alibaba-import.servi
 import { generateImageVariants, ImageGenerationError } from "./image-generation.service.js";
 import { generateMarketingCopy } from "./copy-generation.service.js";
 import { requireAuth } from "../../middlewares/requireAuth.js";
+import { requirePlan } from "../../middlewares/requirePlan.js";
 import { getShopByUser } from "../shopify/shopify.service.js";
 import { db } from "../../config/db.js";
 
@@ -43,7 +44,8 @@ const uploadImageSchema = z.object({
 
 export const imageRouter = Router();
 
-imageRouter.post("/import-alibaba", async (req, res) => {
+// POST /api/images/import-alibaba (STARTER+)
+imageRouter.post("/import-alibaba", requireAuth, requirePlan("STARTER"), async (req, res) => {
   const parsed = importAlibabaSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid Alibaba URL" });
 
@@ -56,7 +58,8 @@ imageRouter.post("/import-alibaba", async (req, res) => {
   }
 });
 
-imageRouter.post("/generate", async (req, res) => {
+// POST /api/images/generate (STARTER+)
+imageRouter.post("/generate", requireAuth, requirePlan("STARTER"), async (req, res) => {
   const parsed = generateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid generation payload", details: parsed.error.flatten() });
 
@@ -77,7 +80,8 @@ imageRouter.post("/generate", async (req, res) => {
   }
 });
 
-imageRouter.post("/generate-copy", async (req, res) => {
+// POST /api/images/generate-copy (STARTER+)
+imageRouter.post("/generate-copy", requireAuth, requirePlan("STARTER"), async (req, res) => {
   const parsed = generateCopySchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid copy generation payload" });
 

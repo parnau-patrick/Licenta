@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { db } from "../../config/db.js";
 import { requireAuth } from "../../middlewares/requireAuth.js";
+import { requirePlan } from "../../middlewares/requirePlan.js";
 import { getShopByUser } from "../shopify/shopify.service.js";
 import { z } from "zod";
 import { generateLandingCopy } from "./landing-ai.service.js";
@@ -45,8 +46,8 @@ landingRouter.get("/", requireAuth, async (req: Request, res: Response) => {
   res.json({ pages });
 });
 
-// POST /api/landings/generate-copy — generare text AI
-landingRouter.post("/generate-copy", requireAuth, async (req: Request, res: Response) => {
+// POST /api/landings/generate-copy — generare text AI (STARTER+)
+landingRouter.post("/generate-copy", requireAuth, requirePlan("STARTER"), async (req: Request, res: Response) => {
   const { productTitle, description } = req.body;
   if (!productTitle) {
     res.status(400).json({ error: "Lipseste titlul produsului." });
@@ -81,8 +82,8 @@ landingRouter.get("/:id", requireAuth, async (req: Request, res: Response) => {
   res.json({ page });
 });
 
-// POST /api/landings — creare noua
-landingRouter.post("/", requireAuth, async (req: Request, res: Response) => {
+// POST /api/landings — creare noua (STARTER+)
+landingRouter.post("/", requireAuth, requirePlan("STARTER"), async (req: Request, res: Response) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Date invalide", details: parsed.error.flatten() });
@@ -145,8 +146,8 @@ landingRouter.put("/:id", requireAuth, async (req: Request, res: Response) => {
   res.json({ page: updated });
 });
 
-// POST /api/landings/:id/publish — publică pe Shopify
-landingRouter.post("/:id/publish", requireAuth, async (req: Request, res: Response) => {
+// POST /api/landings/:id/publish — publică pe Shopify (STARTER+)
+landingRouter.post("/:id/publish", requireAuth, requirePlan("STARTER"), async (req: Request, res: Response) => {
   const shop = await getShopByUser(req.user!.userId);
   if (!shop || !shop.accessToken) {
     res.status(404).json({ error: "No Shopify store connected or no access token." });

@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
 import { generatePriceIntelligence } from "./intelligence.service.js";
 import { requireAuth } from "../../middlewares/requireAuth.js";
+import { requirePlan } from "../../middlewares/requirePlan.js";
 
 export const intelligenceRouter = Router();
 
-intelligenceRouter.use(requireAuth);
+// Price Intelligence necesită plan PRO
+intelligenceRouter.use(requireAuth, requirePlan("PRO"));
 
 intelligenceRouter.post("/analyze", async (req: Request, res: Response) => {
   try {
