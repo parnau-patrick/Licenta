@@ -11,6 +11,7 @@ import {
   CreditCard,
   ShieldCheck,
   LineChart,
+  Lock,
 } from "lucide-react";
 import DashboardPage from "./pages/DashboardPage";
 import PriceIntelligencePage from "./pages/PriceIntelligencePage";
@@ -34,16 +35,19 @@ import { AuthProvider, useAuth } from "./lib/AuthContext";
 import { SocketProvider } from "./lib/SocketContext";
 import { ProtectedRoute, PublicRoute } from "./components/ProtectedRoute";
 import NotificationsBell from "./components/NotificationsBell";
+import PlanGate from "./components/PlanGate";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
-  { to: "/products", label: "Produse Shopify", icon: <ShoppingBag size={20} /> },
-  { to: "/image-studio", label: "Image Studio", icon: <Wand2 size={20} /> },
-  { to: "/image-library", label: "My Images", icon: <ImageIcon size={20} /> },
-  { to: "/landing-builder", label: "Landing Builder", icon: <LayoutTemplate size={20} /> },
-  { to: "/price-intelligence", label: "Price Intelligence", icon: <LineChart size={20} /> },
-  { to: "/drafts", label: "Drafts (Comenzi)", icon: <ShoppingCart size={20} /> },
+  { to: "/", label: "Dashboard", icon: <LayoutDashboard size={20} />, requiredPlan: null },
+  { to: "/products", label: "Produse Shopify", icon: <ShoppingBag size={20} />, requiredPlan: null },
+  { to: "/image-studio", label: "Image Studio", icon: <Wand2 size={20} />, requiredPlan: 'STARTER' },
+  { to: "/image-library", label: "My Images", icon: <ImageIcon size={20} />, requiredPlan: null },
+  { to: "/landing-builder", label: "Landing Builder", icon: <LayoutTemplate size={20} />, requiredPlan: 'STARTER' },
+  { to: "/price-intelligence", label: "Price Intelligence", icon: <LineChart size={20} />, requiredPlan: 'PRO' },
+  { to: "/drafts", label: "Drafts (Comenzi)", icon: <ShoppingCart size={20} />, requiredPlan: null },
 ];
+
+const PLAN_ORDER: Record<string, number> = { FREE: 0, STARTER: 1, PRO: 2 };
 
 const API = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
 
@@ -142,6 +146,9 @@ function AppContent() {
           <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 mt-2">Meniu Principal</p>
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
+            const isLocked = item.requiredPlan
+              ? PLAN_ORDER[user.plan] < PLAN_ORDER[item.requiredPlan]
+              : false;
             return (
               <NavLink
                 key={item.to}
@@ -149,11 +156,16 @@ function AppContent() {
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
                   isActive
                     ? "bg-teal-50 text-teal-700 shadow-sm shadow-teal-100"
+                    : isLocked
+                    ? "text-slate-400 hover:bg-slate-50 hover:text-slate-500"
                     : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
                 }`}
               >
-                <div className={`${isActive ? "text-teal-600" : "text-slate-400"}`}>{item.icon}</div>
-                {item.label}
+                <div className={`${isActive ? "text-teal-600" : isLocked ? "text-slate-300" : "text-slate-400"}`}>{item.icon}</div>
+                <span className="flex-1">{item.label}</span>
+                {isLocked && (
+                  <Lock size={13} className="text-slate-300 flex-shrink-0" />
+                )}
               </NavLink>
             );
           })}
@@ -214,9 +226,21 @@ function AppContent() {
           <Routes>
             <Route element={<ProtectedRoute />}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/price-intelligence" element={<PriceIntelligencePage />} />
-              <Route path="/landing-builder" element={<LandingBuilderPage />} />
-              <Route path="/image-studio" element={<ImageStudioPage />} />
+              <Route path="/price-intelligence" element={
+                <PlanGate requiredPlan="PRO" featureName="Price Intelligence">
+                  <PriceIntelligencePage />
+                </PlanGate>
+              } />
+              <Route path="/landing-builder" element={
+                <PlanGate requiredPlan="STARTER" featureName="Landing Builder">
+                  <LandingBuilderPage />
+                </PlanGate>
+              } />
+              <Route path="/image-studio" element={
+                <PlanGate requiredPlan="STARTER" featureName="Image Studio">
+                  <ImageStudioPage />
+                </PlanGate>
+              } />
               <Route path="/image-library" element={<ImageLibraryPage />} />
               <Route path="/drafts" element={<DraftsPage />} />
               <Route path="/connect-shopify" element={<ShopifyConnectPage />} />
