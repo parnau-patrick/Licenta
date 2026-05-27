@@ -1,4 +1,5 @@
 import { load } from "cheerio";
+import { scrapeAlibabaProduct } from "../alibaba/alibaba.service.js";
 
 type ImportedImage = {
   id: string;
@@ -126,52 +127,25 @@ export async function importAlibabaProduct(alibabaUrl: string): Promise<AlibabaI
     throw new AlibabaImportError("Only alibaba.com product links are allowed.");
   }
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-
   try {
-    response = await fetch(parsedUrl.toString(), {
-      signal: controller.signal,
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml"
-      }
-    });
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new AlibabaImportError("Alibaba request timed out. Try again.");
-    }
-
-    throw new AlibabaImportError("Could not fetch Alibaba product page.");
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  if (!response.ok) {
-    throw new AlibabaImportError(`Alibaba request failed with status ${response.status}.`);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("text/html")) {
-    throw new AlibabaImportError("Alibaba page did not return HTML content.");
-  }
-
-  const html = await response.text();
-  const images = extractImageUrls(html, parsedUrl.toString());
-
-  if (images.length === 0) {
-    throw new AlibabaImportError("No product images found on this Alibaba page.");
-  }
-
-  return {
-    sourceUrl: parsedUrl.toString(),
-    title: extractTitle(html),
-    images: images.map((url, index) => ({
+    const scraped = await scrapeAlibabaProduct(parsedUrl.toString());
+    
+    const images = scraped.images.map((url, index) => ({
       id: `img-${index + 1}`,
       url
-    }))
-  };
+    }));
+
+    if (images.length === 0) {
+      throw new AlibabaImportError("No product images found on this Alibaba page.");
+    }
+
+    return {
+      sourceUrl: parsedUrl.toString(),
+      title: scraped.title || null,
+      images
+    };
+  } catch (error) {
+    if (error instanceof AlibabaImportError) throw error;
+    throw new AlibabaImportError(error instanceof Error ? error.message : "Could not scrape Alibaba product page.");
+  }
 }
