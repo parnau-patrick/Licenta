@@ -115,16 +115,24 @@ async function findOrCreateShopifyCustomer(
     } catch (_) { }
   }
 
-  // Caută după telefon (format internațional și local)
-  for (const q of [intlPhone, rawPhone]) {
+  // Caută după telefon în multiple formate și modalități de query pentru a fi 100% siguri
+  const searchQueries: string[] = [
+    `phone:${intlPhone}`,
+    `phone:${rawPhone}`,
+    `phone:${intlPhone.replace("+", "")}`,
+    intlPhone,
+    rawPhone
+  ];
+
+  for (const queryVal of searchQueries) {
     try {
       const r = await fetch(
-        `${baseUrl}/customers/search.json?query=phone:${encodeURIComponent(q)}&limit=1`,
+        `${baseUrl}/customers/search.json?query=${encodeURIComponent(queryVal)}&limit=1`,
         { headers: { "X-Shopify-Access-Token": token } }
       );
       if (r.ok) {
         const d = await r.json() as any;
-        if (d.customers?.length > 0) {
+        if (d.customers && d.customers.length > 0) {
           const found = d.customers[0];
           await updateCustomerAddress(String(found.id));
           return String(found.id);
@@ -314,8 +322,35 @@ async function createShopifyOrder(
     body: JSON.stringify({ order: orderPayload }),
   });
 
-  const responseData = await response.json() as any;
+  let responseData = await response.json() as any;
   if (!response.ok) {
+    // Dacă eroarea este legată de telefonul deja luat al clientului, trimitem din nou fără obiectul customer inline.
+    // Shopify va asocia automat comanda cu clientul existent pe baza câmpului phone de la nivelul de sus.
+    const errorStr = JSON.stringify(responseData.errors || responseData);
+    if (errorStr.includes("already been taken") || errorStr.includes("phone_number")) {
+      console.log("[checkout/order] ⚠️ Phone taken conflict. Retrying order creation without inline customer payload...");
+      
+      const retryPayload = { ...orderPayload };
+      delete retryPayload.customer; // Eliminăm conflictul
+
+      const retryResponse = await fetch(`${baseUrl}/orders.json`, {
+        method: "POST",
+        headers: {
+          "X-Shopify-Access-Token": shop.accessToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ order: retryPayload }),
+      });
+
+      responseData = await retryResponse.json() as any;
+      if (retryResponse.ok) {
+        return {
+          id: responseData.order?.id,
+          name: `#${responseData.order?.order_number}`,
+        };
+      }
+    }
+
     console.error(
       `[checkout/order] ❌ Eroare Shopify (Status ${response.status}):`,
       JSON.stringify(responseData.errors || responseData, null, 2)
