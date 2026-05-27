@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import CustomLandingPage from '../components/landing/CustomLandingPage'
+import { useSocket } from '../lib/SocketContext'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000'
 
@@ -50,6 +51,8 @@ export default function PublicLandingPage() {
     };
   }, []);
 
+  const { socket } = useSocket()
+
   useEffect(() => {
     if (!id) return
     fetch(`${API_BASE}/api/public/landing/${id}`)
@@ -61,6 +64,35 @@ export default function PublicLandingPage() {
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [id])
+
+  // WebSocket listener pentru actualizări în timp real din editor
+  useEffect(() => {
+    if (!socket || !id) return
+
+    const handleLandingUpdated = (updated: {
+      landingId: string
+      config: Record<string, any>
+      productTitle?: string
+      handle?: string
+    }) => {
+      if (updated.landingId === id) {
+        console.log("⚡ Real-time update received for landing page:", updated.landingId)
+        setData(prev => {
+          if (!prev) return null
+          return {
+            ...prev,
+            config: updated.config,
+            ...(updated.productTitle && { productTitle: updated.productTitle }),
+          }
+        })
+      }
+    }
+
+    socket.on("landing:updated", handleLandingUpdated)
+    return () => {
+      socket.off("landing:updated", handleLandingUpdated)
+    }
+  }, [socket, id])
 
   // Trimiterea înălțimii reale către Shopify parent window prin postMessage
   useEffect(() => {

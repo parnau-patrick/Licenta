@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db } from "../../config/db.js";
+import { emitToAll } from "../../config/socket.js";
 import { requireAuth } from "../../middlewares/requireAuth.js";
 import { requirePlan } from "../../middlewares/requirePlan.js";
 import { getShopByUser } from "../shopify/shopify.service.js";
@@ -141,6 +142,14 @@ landingRouter.put("/:id", requireAuth, async (req: Request, res: Response) => {
       ...(parsed.data.productTitle && { productTitle: parsed.data.productTitle }),
       ...(parsed.data.handle && { handle: slugify(parsed.data.handle) }),
     },
+  });
+
+  // Notifică toate preview-urile active în timp real prin WebSocket
+  emitToAll("landing:updated", {
+    landingId: req.params.id,
+    config: parsed.data.config,
+    productTitle: parsed.data.productTitle,
+    handle: parsed.data.handle
   });
 
   res.json({ page: updated });
