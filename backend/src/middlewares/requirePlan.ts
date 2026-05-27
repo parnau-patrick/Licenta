@@ -11,9 +11,16 @@ const PLAN_ORDER: Record<PlanLevel, number> = {
 /**
  * Middleware care verifică că utilizatorul are cel puțin planul specificat.
  * Exemplu: requirePlan("STARTER") blochează userii FREE.
+ * ADMIN bypass-uiește automat orice restricție de plan.
  */
 export function requirePlan(minPlan: PlanLevel) {
   return (req: Request, res: Response, next: NextFunction) => {
+    // ADMIN are acces la tot indiferent de plan
+    if (req.user?.role === "ADMIN") {
+      next();
+      return;
+    }
+
     const userPlan = (req.user?.plan ?? "FREE") as PlanLevel;
 
     if (PLAN_ORDER[userPlan] >= PLAN_ORDER[minPlan]) {

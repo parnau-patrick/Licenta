@@ -24,7 +24,7 @@ export default function PlanGate({ requiredPlan, children, featureName }: PlanGa
   const navigate = useNavigate()
 
   const userPlan = (user?.plan ?? 'FREE') as PlanLevel
-  const hasAccess = PLAN_ORDER[userPlan] >= PLAN_ORDER[requiredPlan]
+  const hasAccess = user?.role === 'ADMIN' || PLAN_ORDER[userPlan] >= PLAN_ORDER[requiredPlan]
 
   // User are acces → randăm conținutul normal
   if (hasAccess) return <>{children}</>

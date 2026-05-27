@@ -146,7 +146,7 @@ function AppContent() {
           <p className="px-4 text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 mt-2">Meniu Principal</p>
           {navItems.map((item) => {
             const isActive = location.pathname === item.to;
-            const isLocked = item.requiredPlan
+            const isLocked = user.role !== 'ADMIN' && item.requiredPlan
               ? PLAN_ORDER[user.plan] < PLAN_ORDER[item.requiredPlan]
               : false;
             return (
