@@ -46,12 +46,16 @@ async function parseJson<T>(response: Response): JsonResult<T> {
 }
 
 export async function fetchTemplates(): JsonResult<{ items: TemplateItem[] }> {
-  const response = await fetch(`${API_BASE_URL}/api/landings/templates`);
+  const response = await fetch(`${API_BASE_URL}/api/landings/templates`, {
+    credentials: "include"
+  });
   return parseJson<{ items: TemplateItem[] }>(response);
 }
 
 export async function fetchImagePatterns(): JsonResult<{ items: ImagePattern[] }> {
-  const response = await fetch(`${API_BASE_URL}/api/images/patterns`);
+  const response = await fetch(`${API_BASE_URL}/api/images/patterns`, {
+    credentials: "include"
+  });
   return parseJson<{ items: ImagePattern[] }>(response);
 }
 
@@ -63,6 +67,7 @@ export async function importAlibabaImages(
     headers: {
       "Content-Type": "application/json"
     },
+    credentials: "include",
     body: JSON.stringify({ alibabaUrl })
   });
 
@@ -83,6 +88,7 @@ export async function generateImageVariants(payload: {
   const response = await fetch(`${API_BASE_URL}/api/images/generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(payload)
   });
 
@@ -107,6 +113,7 @@ export async function generateMarketingCopy(
     headers: {
       "Content-Type": "application/json"
     },
+    credentials: "include",
     body: JSON.stringify({ title, context })
   });
 
