@@ -318,7 +318,7 @@ export default function LandingBuilderPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {landings.map(l => {
-              const thumbImg = l.config?.images?.[0] || l.config?.landingConfig?.heroImage || ''
+              const thumbImg = l.config?.landingConfig?.heroImage || l.config?.images?.[0] || ''
               const isActive = l.isPublished
               return (
                 <div 
