@@ -17,6 +17,8 @@ interface CanvaEditorModalProps {
   onClose: () => void;
 }
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+
 export default function CanvaEditorModal({ variantId, variantLabel, backgroundUrl, cutoutUrl, copy, onClose }: CanvaEditorModalProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<ActiveTab>("text");
@@ -24,6 +26,11 @@ export default function CanvaEditorModal({ variantId, variantLabel, backgroundUr
 
   const { elements, selectedId, selectedEl, setSelectedId, addText, addShape, addBadge, updateElement, deleteElement, changeZIndex } =
     useCanvasElements({ variantId, copy, cutoutUrl });
+
+  // Proxy extern pentru imaginea de fundal pentru a ocoli restricțiile de CORS din canvas-ul editorului
+  const proxiedBackgroundUrl = backgroundUrl.startsWith("http") && !backgroundUrl.includes("localhost")
+    ? `${API_BASE}/api/images/proxy?url=${encodeURIComponent(backgroundUrl)}`
+    : backgroundUrl;
 
   const handleDownload = async () => {
     if (!canvasRef.current) return;
@@ -68,7 +75,7 @@ export default function CanvaEditorModal({ variantId, variantLabel, backgroundUr
         />
         <CanvasWorkspace
           ref={canvasRef}
-          backgroundUrl={backgroundUrl}
+          backgroundUrl={proxiedBackgroundUrl}
           bgOpacity={bgOpacity}
           elements={elements}
           selectedId={selectedId}

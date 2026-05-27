@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
+import fetch from "node-fetch";
 import { AlibabaImportError, importAlibabaProduct } from "./alibaba-import.service.js";
 import { generateImageVariants, ImageGenerationError } from "./image-generation.service.js";
 import { generateMarketingCopy } from "./copy-generation.service.js";
@@ -194,3 +195,30 @@ imageRouter.get("/library/:id/download", requireAuth, async (req: Request, res: 
   // Altfel, redirect la URL-ul extern
   res.redirect(image.url);
 });
+
+// GET /api/images/proxy — proxy pentru imagini externe (evită problemele de CORS și canvas-tainting în editor)
+imageRouter.get("/proxy", async (req: Request, res: Response) => {
+  const imageUrl = req.query.url as string;
+  if (!imageUrl) {
+    res.status(400).json({ error: "URL param is required" });
+    return;
+  }
+
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      res.status(response.status).json({ error: "Failed to fetch remote image" });
+      return;
+    }
+
+    const contentType = response.headers.get("content-type") || "image/jpeg";
+    const buffer = Buffer.from(await response.arrayBuffer());
+
+    res.setHeader("Content-Type", contentType);
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(buffer);
+  } catch (error) {
+    res.status(500).json({ error: "Error proxying image" });
+  }
+});
+
