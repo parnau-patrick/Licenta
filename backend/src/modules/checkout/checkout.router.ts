@@ -117,11 +117,11 @@ async function findOrCreateShopifyCustomer(
 
   // Caută după telefon în multiple formate și modalități de query pentru a fi 100% siguri
   const searchQueries: string[] = [
-    `phone:${intlPhone}`,
-    `phone:${rawPhone}`,
-    `phone:${intlPhone.replace("+", "")}`,
-    intlPhone,
-    rawPhone
+    `phone:"${intlPhone}"`,
+    `phone:"${rawPhone}"`,
+    `phone:"${intlPhone.replace("+", "")}"`,
+    `"${intlPhone}"`,
+    `"${rawPhone}"`
   ];
 
   for (const queryVal of searchQueries) {
@@ -165,7 +165,7 @@ async function findOrCreateShopifyCustomer(
     // Telefon deja luat → caută din nou
     if (JSON.stringify(createData.errors || "").includes("already been taken")) {
       const retryResp = await fetch(
-        `${baseUrl}/customers/search.json?query=phone:${encodeURIComponent(intlPhone)}&limit=1`,
+        `${baseUrl}/customers/search.json?query=${encodeURIComponent(`phone:"${intlPhone}"`)}&limit=1`,
         { headers: { "X-Shopify-Access-Token": token } }
       );
       if (retryResp.ok) {
