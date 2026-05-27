@@ -588,16 +588,31 @@ export default function LandingBuilderPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-2">Imagini produs (URL-uri)</label>
+                    <label className="block text-xs font-semibold text-slate-600 mb-2">Imagini produs (Galeria Landing Page)</label>
                     {(cfg.images || []).map((url: string, i: number) => (
-                      <div key={i} className="flex gap-2 mb-2">
-                        <input value={url} onChange={e => { const imgs = [...cfg.images]; imgs[i] = e.target.value; setCfg((c: any) => ({ ...c, images: imgs })) }} className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm" placeholder={`Imagine ${i+1}`} />
-                        <button onClick={() => setCfg((c: any) => ({ ...c, images: c.images.filter((_: any, j: number) => j !== i) }))} className="text-red-400 hover:text-red-600 transition-colors"><Trash2 size={14} /></button>
+                      <div key={i} className="border border-slate-150 rounded-xl p-3 bg-slate-50/50 mb-3 relative group">
+                        {/* Buton ștergere din galerie în colțul din dreapta sus */}
+                        <button 
+                          onClick={() => setCfg((c: any) => ({ ...c, images: c.images.filter((_: any, j: number) => j !== i) }))} 
+                          className="absolute top-3 right-3 text-red-400 hover:text-red-600 bg-white rounded-md p-1 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                        
+                        <ImgInput 
+                          label={`Imagine ${i + 1}`} 
+                          value={url} 
+                          onChange={(v) => {
+                            const imgs = [...cfg.images];
+                            imgs[i] = v;
+                            setCfg((c: any) => ({ ...c, images: imgs }));
+                          }} 
+                        />
                       </div>
                     ))}
                     <div className="flex gap-2 mt-2">
-                      <button onClick={() => setCfg((c: any) => ({ ...c, images: [...(c.images || []), ''] }))} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50">+ Adaugă imagine</button>
-                      <button onClick={() => { if(confirm('Ești sigur că vrei să ștergi toate imaginile din galerie?')) setCfg((c: any) => ({ ...c, images: [] })) }} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors">🗑️ Șterge Toate</button>
+                      <button onClick={() => setCfg((c: any) => ({ ...c, images: [...(c.images || []), ''] }))} className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 font-bold">+ Adaugă imagine</button>
+                      <button onClick={() => { if(confirm('Ești sigur că vrei să ștergi toate imaginile din galerie?')) setCfg((c: any) => ({ ...c, images: [] })) }} className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-500 hover:bg-red-50 transition-colors font-bold">🗑️ Șterge Toate</button>
                     </div>
                   </div>
                 </>}
