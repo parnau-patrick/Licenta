@@ -416,6 +416,8 @@ function HeroSection({ product, cfg, THEME, discount, savings, timeLeft, selecte
 /* ── Hero Gallery ── */
 function HeroGallery({ images = [], heroImage, name, THEME, discount, showDiscount = true }: { images?: string[]; heroImage?: string; name: string; THEME: string; discount: number; showDiscount?: boolean }) {
   const [active, setActive] = useState(0)
+  const sliderRef = useRef<HTMLDivElement>(null)
+  
   const allImages: string[] = (heroImage && !images.includes(heroImage))
     ? [heroImage, ...images]
     : images
@@ -427,7 +429,13 @@ function HeroGallery({ images = [], heroImage, name, THEME, discount, showDiscou
   }
 
   const scrollTo = (i: number) => {
-    document.getElementById(`lp-gallery-${i}`)?.scrollIntoView({ behavior: 'smooth', inline: 'start' })
+    const container = sliderRef.current
+    if (container) {
+      container.scrollTo({
+        left: i * container.offsetWidth,
+        behavior: 'smooth'
+      })
+    }
   }
 
   if (allImages.length === 0) {
@@ -450,6 +458,7 @@ function HeroGallery({ images = [], heroImage, name, THEME, discount, showDiscou
 
       {/* Main slider */}
       <div
+        ref={sliderRef}
         onScroll={handleScroll}
         className="flex overflow-x-auto snap-x snap-mandatory scrollbar-none rounded-3xl shadow-2xl border border-slate-100 bg-slate-50"
         style={{ scrollBehavior: 'smooth' }}
