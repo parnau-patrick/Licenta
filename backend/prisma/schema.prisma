@@ -88,3 +88,19 @@ model Notification {
   link      String?  // Ex: '/price-intelligence?productId=123'
   createdAt DateTime @default(now())
 }
+
+// ── Checkout Abandonat ────────────────────────────────────────────────────────
+// Stochează date parțiale ale clienților care au abandonat formularul.
+// Worker-ul de background sincronizează draft orders în Shopify după 5 minute.
+model AbandonedCheckout {
+  id              String   @id // phone number (fără spații) — cheie unică per client
+  landingId       String
+  customer        Json     // { firstName, lastName, phone, address, city, county }
+  items           Json     // array de produse
+  shipping        Float    @default(20)
+  total           Float    @default(0)
+  status          String   @default("pending") // "pending" | "synced" | "ordered"
+  shopifyDraftId  String?  // ID draft order creat în Shopify (dacă există)
+  lastActivity    DateTime @default(now())
+  createdAt       DateTime @default(now())
+}
